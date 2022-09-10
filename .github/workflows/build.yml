@@ -65,9 +65,9 @@ jobs:
           grep -n -R CertificateValidity ./*
           grep -n -R duration365d ./*
 
-          build_version=$(cat build/build-image/cross/VERSION)
+          #build_version=$(cat build/build-image/cross/VERSION)
 
-          docker pull k8s.gcr.io/build-image/kube-cross:${build_version}
+          #docker pull k8s.gcr.io/build-image/kube-cross:${build_version} || docker pull k8s.gcr.io/kube-cross:${build_version}
 
           ./build/run.sh make kubeadm KUBE_BUILD_PLATFORMS=linux/amd64
           ./build/run.sh make kubeadm KUBE_BUILD_PLATFORMS=linux/arm64
