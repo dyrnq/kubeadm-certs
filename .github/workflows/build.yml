@@ -1,0 +1,91 @@
+name: build and release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Set up QEMU
+        id: qemu
+        uses: docker/setup-qemu-action@v2
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Inspect builder
+        run: |
+          echo "Name:      ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status:    ${{ steps.buildx.outputs.status }}"
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+
+      # -
+      #   name: Login to DockerHub
+      #   uses: docker/login-action@v1
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install ca-certificates curl jq gnupg2 ca-certificates psmisc procps xz-utils rsync
+
+
+      - name: Get version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - name: Test version
+        run: |
+          echo ${{ steps.get_version.outputs.VERSION }}
+          echo ${{ github.ref }}
+
+      - name: Build kubeadm binary
+        run: |
+
+          git clone --verbose --progress --depth 1 --branch ${{ steps.get_version.outputs.VERSION }} https://github.com/kubernetes/kubernetes.git
+
+          pushd kubernetes >/dev/null 2>&1 || exit 1
+
+          sed -i 's#time.Hour \* 24 \* 365#time.Hour * 24 * 365 * 200#g'  ./cmd/kubeadm/app/constants/constants.go
+          sed -i "s@duration365d \* 10@duration365d \* 200@" ./staging/src/k8s.io/client-go/util/cert/cert.go
+
+          grep -n -R CertificateValidity ./*
+          grep -n -R duration365d ./*
+
+          build_version=$(cat build/build-image/cross/VERSION)
+
+          docker pull k8s.gcr.io/build-image/kube-cross:${build_version}
+
+          ./build/run.sh make kubeadm KUBE_BUILD_PLATFORMS=linux/amd64
+          ./build/run.sh make kubeadm KUBE_BUILD_PLATFORMS=linux/arm64
+
+          cp _output/dockerized/bin/linux/amd64/kubeadm _output/kubeadm-linux-amd64
+          cp _output/dockerized/bin/linux/arm64/kubeadm _output/kubeadm-linux-arm64
+
+          ls -al _output/kubeadm-*
+
+          _output/kubeadm-linux-amd64 version
+          popd &>/dev/null
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body: "Set the validity period of the kubeadm certificate to 200 years.  \n source: https://github.com/kubernetes/kubernetes/releases/tag/${{ steps.get_version.outputs.VERSION }}"
+          files: |
+            kubernetes/_output/kubeadm-linux-amd64
+            kubernetes/_output/kubeadm-linux-arm64
+
