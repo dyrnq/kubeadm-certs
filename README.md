@@ -26,14 +26,33 @@ wget https://github.com/dyrnq/kubeadm-certs/releases/download/v1.24.0/kubeadm-li
 chmod +x /usr/bin/kubeadm
 ```
 
-for existing kubernetes cluster
+Test init certs.
+
+```bash
+kubeadm init phase certs all
+kubeadm init phase kubeconfig all
+kubeadm certs check-expiration || kubeadm alpha certs check-expiration
+```
+
+For existing kubernetes cluster.
 
 ```bash
 kubeadm certs renew all -v5
 kubeadm init phase upload-certs --upload-certs -v5
 ```
 
-for upgrade first control plane
+Special remind when use `kubeadm certs renew all` will not create CA certificate if CA certificate existing(ca、etcd-ca、front-proxy-ca),Unless deleted manually.
+
+```bash
+rm -rf /etc/kubernetes/pki/etcd/ca.crt
+rm -rf /etc/kubernetes/pki/etcd/ca.key
+rm -rf /etc/kubernetes/pki/front-proxy-ca.crt
+rm -rf /etc/kubernetes/pki/front-proxy-ca.key
+rm -rf /etc/kubernetes/pki/ca.crt
+rm -rf /etc/kubernetes/pki/ca.key
+```
+
+Upgrade first control plane.
 
 ```bash
 kubeadm upgrade plan
@@ -41,7 +60,7 @@ kubeadm upgrade plan
 kubeadm upgrade apply --force --certificate-renewal=false v1.23.1
 ```
 
-for upgrade other control plane and nodes
+Upgrade other control plane and nodes.
 
 ```bash
 kubeadm upgrade node --certificate-renewal=false v1.23.1
