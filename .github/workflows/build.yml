@@ -75,6 +75,11 @@ jobs:
           cp _output/dockerized/bin/linux/amd64/kubeadm _output/kubeadm-linux-amd64
           cp _output/dockerized/bin/linux/arm64/kubeadm _output/kubeadm-linux-arm64
 
+          echo "[certs] test"
+          sudo _output/kubeadm-linux-amd64 init phase certs all
+          sudo _output/kubeadm-linux-amd64 init phase kubeconfig all
+          sudo _output/kubeadm-linux-amd64 certs check-expiration || sudo _output/kubeadm-linux-amd64 alpha certs check-expiration
+
           ls -al _output/kubeadm-*
 
           _output/kubeadm-linux-amd64 version
