@@ -59,7 +59,16 @@ jobs:
 
           pushd kubernetes >/dev/null 2>&1 || exit 1
 
-          sed -i 's#time.Hour \* 24 \* 365#time.Hour * 24 * 365 * 200#g'  ./cmd/kubeadm/app/constants/constants.go
+          if grep -q "CertificateValidityPeriod" ./cmd/kubeadm/app/constants/constants.go; then
+            sed -i \
+            -e 's#CertificateValidityPeriod = time.Hour \* 24 \* 365#CertificateValidityPeriod = time.Hour * 24 * 365 * 200#g' \
+            -e 's#CACertificateValidityPeriod = time.Hour \* 24 \* 365 \* 10#CACertificateValidityPeriod = time.Hour * 24 * 365 * 200#g' \
+            ./cmd/kubeadm/app/constants/constants.go
+          else
+            sed -i 's#time.Hour \* 24 \* 365#time.Hour * 24 * 365 * 200#g'  ./cmd/kubeadm/app/constants/constants.go
+          fi
+
+
           sed -i "s@duration365d \* 10@duration365d \* 200@" ./staging/src/k8s.io/client-go/util/cert/cert.go
 
           grep -n -R CertificateValidity ./*
