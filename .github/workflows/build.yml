@@ -1,5 +1,5 @@
 name: build and release
-
+run-name: "Build Version: ${{ github.ref_name }}"
 on:
   push:
     tags:
